@@ -1,6 +1,5 @@
-"""Page metrics business logic services."""
-
 from datetime import datetime, timezone
+from urllib.parse import urlparse, urlunparse
 
 from sqlalchemy import select, desc, func
 from sqlalchemy.orm import Session
@@ -8,6 +7,11 @@ from sqlalchemy.orm import Session
 from app.models import page_metrics
 from app.schemas import page_metric as page_metric_schemas
 from app.utils.helpers import format_datetime
+
+
+def _normalize_url(url: str) -> str:
+    """Normalize URL by removing trailing slash for consistent matching."""
+    return url.rstrip("/") if url != "/" else url
 
 
 def _format_page_visit(
@@ -30,7 +34,7 @@ def create_page_visit(
     db: Session, visit_in: page_metric_schemas.PageMetricCreateDTO
 ) -> page_metric_schemas.PageMetric:
     visit = page_metrics.PageMetric(
-        url=str(visit_in.url),
+        url=_normalize_url(str(visit_in.url)),
         datetime_visited=visit_in.datetime_visited or datetime.now(timezone.utc),
         link_count=visit_in.link_count,
         word_count=visit_in.word_count,
@@ -45,9 +49,10 @@ def create_page_visit(
 def get_visits_for_url(
     db: Session, url: str, limit: int = 50
 ) -> list[page_metric_schemas.PageMetric]:
+    normalized_url = _normalize_url(url)
     stmt = (
         select(page_metrics.PageMetric)
-        .where(page_metrics.PageMetric.url == url)
+        .where(page_metrics.PageMetric.url == normalized_url)
         .order_by(desc(page_metrics.PageMetric.datetime_visited))
         .limit(limit)
     )
@@ -58,6 +63,7 @@ def get_visits_for_url(
 def get_latest_metrics_for_url(
     db: Session, url: str
 ) -> page_metric_schemas.PageMetrics | None:
+    normalized_url = _normalize_url(url)
     latest = (
         db.query(
             page_metrics.PageMetric,
@@ -65,7 +71,7 @@ def get_latest_metrics_for_url(
             .over(partition_by=page_metrics.PageMetric.url)
             .label("visit_count"),
         )
-        .where(page_metrics.PageMetric.url == url)
+        .where(page_metrics.PageMetric.url == normalized_url)
         .order_by(desc(page_metrics.PageMetric.datetime_visited))
         .first()
     )
