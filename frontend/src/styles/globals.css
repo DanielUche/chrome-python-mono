@@ -46,6 +46,42 @@ body {
   width: 360px;
   overflow: hidden;
   background: var(--bg-primary);
+  position: relative;
+}
+
+/* Posting progress bar */
+.posting-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--bg-secondary);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-dark), var(--primary-color));
+  background-size: 200% 100%;
+  animation: progress-loading 1.5s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+@keyframes progress-loading {
+  0% {
+    width: 0%;
+    background-position: 0% center;
+  }
+  50% {
+    width: 100%;
+    background-position: 100% center;
+  }
+  100% {
+    width: 100%;
+    background-position: 0% center;
+  }
 }
 
 .sidepanel-header {

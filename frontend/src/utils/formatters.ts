@@ -1,10 +1,29 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
+import { DATE_FORMATS, DATE_OUTPUT_FORMAT } from '../constants'
 
 // Enable plugins
 dayjs.extend(relativeTime)
 dayjs.extend(customParseFormat)
+
+/**
+ * Parse date string using multiple format patterns
+ */
+function parseDateWithFormats(dateString: string): dayjs.Dayjs {
+  if (!dateString) return dayjs()
+
+  for (const format of DATE_FORMATS) {
+    const parsed = dayjs(dateString, format)
+    if (parsed.isValid()) {
+      return parsed
+    }
+  }
+
+  // Try ISO format as fallback
+  const isoDate = dayjs(dateString)
+  return isoDate.isValid() ? isoDate : dayjs()
+}
 
 export const formatters = {
   /**
@@ -12,34 +31,14 @@ export const formatters = {
    */
   formatDate(dateString: string): string {
     if (!dateString) return 'N/A'
-    
-    // Try multiple format patterns (backend sends: "November 22, 2025 at 12:59 PM")
-    const formats = [
-      'MMMM DD, YYYY [at] hh:mm A',  // November 22, 2025 at 12:59 PM
-      'MMMM D, YYYY [at] hh:mm A',   // November 22, 2025 at 12:59 PM (without zero-padding)
-      'MMMM DD, YYYY [at] h:mm A',   // November 22, 2025 at 1:59 PM
-      'MMMM D, YYYY [at] h:mm A',    // November 22, 2025 at 1:59 PM (without zero-padding)
-    ]
-    
-    let date = dayjs()
-    for (const format of formats) {
-      const parsed = dayjs(dateString, format)
-      if (parsed.isValid()) {
-        date = parsed
-        break
-      }
-    }
-    
-    // If still not valid, try ISO format
-    if (!date.isValid()) {
-      date = dayjs(dateString)
-    }
-    
+
+    const date = parseDateWithFormats(dateString)
+
     if (!date.isValid()) {
       console.warn('Invalid date string:', dateString)
       return 'Invalid Date'
     }
-    return date.format('MMM DD, YYYY, hh:mm A')
+    return date.format(DATE_OUTPUT_FORMAT)
   },
 
   /**
@@ -47,29 +46,9 @@ export const formatters = {
    */
   formatTimeAgo(dateString: string): string {
     if (!dateString) return 'N/A'
-    
-    // Try multiple format patterns (backend sends: "November 22, 2025 at 12:59 PM")
-    const formats = [
-      'MMMM DD, YYYY [at] hh:mm A',  // November 22, 2025 at 12:59 PM
-      'MMMM D, YYYY [at] hh:mm A',   // November 22, 2025 at 12:59 PM (without zero-padding)
-      'MMMM DD, YYYY [at] h:mm A',   // November 22, 2025 at 1:59 PM
-      'MMMM D, YYYY [at] h:mm A',    // November 22, 2025 at 1:59 PM (without zero-padding)
-    ]
-    
-    let date = dayjs()
-    for (const format of formats) {
-      const parsed = dayjs(dateString, format)
-      if (parsed.isValid()) {
-        date = parsed
-        break
-      }
-    }
-    
-    // If still not valid, try ISO format
-    if (!date.isValid()) {
-      date = dayjs(dateString)
-    }
-    
+
+    const date = parseDateWithFormats(dateString)
+
     if (!date.isValid()) {
       console.warn('Invalid date string:', dateString)
       return 'Unknown'

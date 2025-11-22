@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiService } from '../services/api'
 import type { PageMetrics, PageMetric } from '../types/metrics'
+import { TIMING } from '../constants'
 
 interface UseMetricsResult {
   metrics: PageMetrics | null
@@ -11,6 +12,23 @@ interface UseMetricsResult {
   refetch: () => Promise<void>
 }
 
+/**
+ * Fetch metrics and visits data from API
+ */
+async function fetchMetricsData(url: string) {
+  return Promise.all([
+    apiService.getMetrics(url),
+    apiService.getVisits(url),
+  ])
+}
+
+/**
+ * Determine if there's any data to display
+ */
+function hasNoData(metricsData: PageMetrics | null, visitsData: PageMetric[]): boolean {
+  return !metricsData && visitsData.length === 0
+}
+
 export function useMetrics(url: string | null): UseMetricsResult {
   const [metrics, setMetrics] = useState<PageMetrics | null>(null)
   const [visits, setVisits] = useState<PageMetric[]>([])
@@ -18,64 +36,28 @@ export function useMetrics(url: string | null): UseMetricsResult {
   const [error, setError] = useState<Error | null>(null)
   const [noData, setNoData] = useState(false)
 
-  useEffect(() => {
+  const fetchAndUpdateMetrics = useCallback(async () => {
     if (!url) return
 
-    const fetchMetrics = async () => {
-      setLoading(true)
-      setError(null)
-      setNoData(false)
-      try {
-        const [metricsData, visitsData] = await Promise.all([
-          apiService.getMetrics(url),
-          apiService.getVisits(url),
-        ])
-        
-        if (!metricsData && visitsData.length === 0) {
-          setNoData(true)
-          setMetrics(null)
-          setVisits([])
-        } else {
-          setMetrics(metricsData)
-          setVisits(visitsData)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch metrics'))
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchMetrics()
-    const interval = setInterval(fetchMetrics, 30000) // Refresh every 30 seconds
-    return () => clearInterval(interval)
-  }, [url])
-
-  const refetch = async () => {
-    if (!url) return
     setLoading(true)
     setError(null)
-    setNoData(false)
     try {
-      const [metricsData, visitsData] = await Promise.all([
-        apiService.getMetrics(url),
-        apiService.getVisits(url),
-      ])
-      
-      if (!metricsData && visitsData.length === 0) {
-        setNoData(true)
-        setMetrics(null)
-        setVisits([])
-      } else {
-        setMetrics(metricsData)
-        setVisits(visitsData)
-      }
+      const [metricsData, visitsData] = await fetchMetricsData(url)
+      setNoData(hasNoData(metricsData, visitsData))
+      setMetrics(metricsData)
+      setVisits(visitsData)
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch metrics'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [url])
 
-  return { metrics, visits, loading, error, noData, refetch }
+  useEffect(() => {
+    fetchAndUpdateMetrics()
+    const interval = setInterval(fetchAndUpdateMetrics, TIMING.METRICS_UI_REFRESH_INTERVAL)
+    return () => clearInterval(interval)
+  }, [fetchAndUpdateMetrics])
+
+  return { metrics, visits, loading, error, noData, refetch: fetchAndUpdateMetrics }
 }

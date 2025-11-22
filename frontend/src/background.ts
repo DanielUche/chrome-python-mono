@@ -6,6 +6,7 @@
 import { apiService } from "./services/api";
 import type { ExtensionMessage, MetricsPayload } from "./types/messages";
 import type { PageMetricCreateDTO } from "./types/metrics";
+import { MESSAGE_TYPES } from "./constants/messages";
 
 // Listen for extension icon clicks to open side panel
 chrome.action.onClicked.addListener(async (tab) => {
@@ -57,14 +58,27 @@ async function handleMessage(
  * Record collected metrics to backend
  */
 async function recordPageMetrics(payload: MetricsPayload): Promise<unknown> {
-  const visitData: PageMetricCreateDTO = {
-    url: payload.url,
-    link_count: payload.linkCount,
-    word_count: payload.wordCount,
-    image_count: payload.imageCount,
-    datetime_visited: new Date().toISOString(),
-  };
-  return apiService.recordVisit(visitData);
+  // Notify all sidepanels that posting has started
+  await chrome.runtime.sendMessage({ type: MESSAGE_TYPES.POSTING_START }).catch(() => {
+    // Ignore errors if no sidepanel is open
+  });
+
+  try {
+    const visitData: PageMetricCreateDTO = {
+      url: payload.url,
+      link_count: payload.linkCount,
+      word_count: payload.wordCount,
+      image_count: payload.imageCount,
+      datetime_visited: new Date().toISOString(),
+    };
+    const result = await apiService.recordVisit(visitData);
+    return result;
+  } finally {
+    // Notify all sidepanels that posting has ended
+    await chrome.runtime.sendMessage({ type: MESSAGE_TYPES.POSTING_END }).catch(() => {
+      // Ignore errors if no sidepanel is open
+    });
+  }
 }
 
 console.log("Background service worker loaded");

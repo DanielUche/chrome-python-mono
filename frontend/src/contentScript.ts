@@ -3,6 +3,8 @@
  * Collects page metrics and sends them to background worker
  */
 
+import { TIMING } from './constants/timing'
+
 let metricsIntervalId: number | null = null
 
 /**
@@ -38,7 +40,7 @@ function stopMetrics() {
 function reinitializeMetrics() {
   stopMetrics()
   sendMetrics()
-  metricsIntervalId = window.setInterval(sendMetrics, 60000) // Every 60 seconds
+  metricsIntervalId = window.setInterval(sendMetrics, TIMING.METRICS_COLLECTION_INTERVAL)
   console.log('Reinitialized metrics collection')
 }
 
@@ -95,18 +97,37 @@ function setupExtensionReloadDetection() {
       console.log('Extension context restored, reinitializing metrics')
       reinitializeMetrics()
     }
-  }, 5000) // Check every 5 seconds
+  }, TIMING.EXTENSION_RELOAD_CHECK_INTERVAL)
 }
 
 // Send metrics when page finishes loading
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', sendMetrics)
-} else {
-  sendMetrics()
+function initializeMetricsCollection() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOMContentLoaded event fired, sending metrics')
+      sendMetrics()
+      // Start periodic collection after initial send
+      metricsIntervalId = window.setInterval(sendMetrics, TIMING.METRICS_COLLECTION_INTERVAL)
+    })
+  } else {
+    // DOM is already loaded (for content scripts injected on already-loaded pages)
+    console.log('DOM already loaded, sending metrics immediately')
+    sendMetrics()
+    // Start periodic collection
+    metricsIntervalId = window.setInterval(sendMetrics, TIMING.METRICS_COLLECTION_INTERVAL)
+  }
 }
 
-// Also send metrics periodically for long-lived pages (SPAs)
-metricsIntervalId = window.setInterval(sendMetrics, 60000) // Every 60 seconds
+// Also wait for page load to get more accurate metrics
+window.addEventListener('load', () => {
+  console.log('Page load event fired')
+  // Resend metrics after all resources loaded to get updated counts
+  if (metricsIntervalId !== null) {
+    sendMetrics()
+  }
+})
+
+initializeMetricsCollection()
 
 // Setup detection for extension reloads
 setupExtensionReloadDetection()
