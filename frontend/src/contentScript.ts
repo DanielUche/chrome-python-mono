@@ -1,11 +1,28 @@
 /**
  * Content script injected into web pages
  * Collects page metrics and sends them to background worker
+ * Only sends metrics when the tab is active
  */
 
 import { TIMING } from './constants/timing'
 
 let metricsIntervalId: number | null = null
+let isTabActive = false
+
+/**
+ * Check if the current tab is active and update flag
+ */
+async function updateTabActiveStatus() {
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+    const activeTabUrl = tabs[0]?.url
+    const currentTabUrl = window.location.href
+    isTabActive = activeTabUrl === currentTabUrl
+  } catch (error) {
+    console.warn('Could not determine tab active status:', error)
+    isTabActive = true // Assume active if we can't check
+  }
+}
 
 /**
  * Collect page metrics from the current page
@@ -45,9 +62,14 @@ function reinitializeMetrics() {
 }
 
 /**
- * Send metrics to background worker
+ * Send metrics to background worker (only if tab is active)
  */
 function sendMetrics() {
+  // Only send metrics if this tab is active
+  if (!isTabActive) {
+    return
+  }
+
   const metrics = collectPageMetrics()
 
   // Skip restricted domains
@@ -101,9 +123,13 @@ function setupExtensionReloadDetection() {
 }
 
 // Send metrics when page finishes loading
-function initializeMetricsCollection() {
+async function initializeMetricsCollection() {
+  // Check if tab is active before starting collection
+  await updateTabActiveStatus()
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      await updateTabActiveStatus()
       console.log('DOMContentLoaded event fired, sending metrics')
       sendMetrics()
       // Start periodic collection after initial send
@@ -119,11 +145,24 @@ function initializeMetricsCollection() {
 }
 
 // Also wait for page load to get more accurate metrics
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  await updateTabActiveStatus()
   console.log('Page load event fired')
   // Resend metrics after all resources loaded to get updated counts
   if (metricsIntervalId !== null) {
     sendMetrics()
+  }
+})
+
+// Listen for tab visibility changes
+document.addEventListener('visibilitychange', async () => {
+  if (!document.hidden) {
+    // Tab became visible/active
+    await updateTabActiveStatus()
+    if (isTabActive && metricsIntervalId === null) {
+      console.log('Tab became active, reinitializing metrics collection')
+      reinitializeMetrics()
+    }
   }
 })
 
