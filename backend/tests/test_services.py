@@ -4,21 +4,9 @@ import pytest
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
-from app.config import SessionLocal
 from app.models import PageMetric
 from app.services import page_metrics
 from app.schemas import page_metric as schemas
-
-
-@pytest.fixture
-def db():
-    """Create a fresh database session for each test."""
-    db = SessionLocal()
-    yield db
-    # Cleanup
-    db.query(PageMetric).delete()
-    db.commit()
-    db.close()
 
 
 class TestCreatePageVisit:
