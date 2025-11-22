@@ -7,24 +7,19 @@ class PageMetricBase(BaseModel):
     link_count: int
     word_count: int
     image_count: int
-
-
 class PageMetricCreateDTO(PageMetricBase):
     datetime_visited: datetime | None = None
 
-
 class PageMetric(PageMetricBase):
     id: int
-    datetime_visited: datetime
+    datetime_visited: str
 
     class Config:
-        orm_mode = True
-
-
+        from_attributes = True
 class PageMetrics(BaseModel):
     url: HttpUrl
     link_count: int
     word_count: int
     image_count: int
-    last_visited: datetime | None
+    last_visited: str | None
     visit_count: int

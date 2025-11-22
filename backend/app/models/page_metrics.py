@@ -1,12 +1,11 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 
-from ..config import Base
+from app.config.db import Base
 
 
 class PageMetric(Base):
     __tablename__ = "page_metrics"
-
     id = Column(Integer, primary_key=True, index=True)
     url = Column(String, index=True, nullable=False)
     datetime_visited = Column(

@@ -1,3 +1,5 @@
-from . import page_matrics as page_metric_services
+"""Business logic services."""
 
-__all__ = ["page_metric_services"]
+from . import page_metrics
+
+__all__ = ["page_metrics"]

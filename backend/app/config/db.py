@@ -1,15 +1,9 @@
 from typing import Generator
 
-from pydantic_settings import BaseSettings
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
-
-class Settings(BaseSettings):
-    DATABASE_URL: str = ""
-
-    class Config:
-        env_file = ".env"
+from .settings import Settings
 
 # Initialize settings
 settings = Settings()
