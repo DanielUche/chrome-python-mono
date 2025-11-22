@@ -17,11 +17,13 @@ def _normalize_url(url: str) -> str:
 def _format_page_visit(
     visit: page_metrics.PageMetric,
 ) -> page_metric_schemas.PageMetric:
-
+    # Ensure URL is normalized (without trailing slash)
+    url_normalized = str(visit.url).rstrip('/') or '/'
+    
     return page_metric_schemas.PageMetric.model_validate(
         {
             "id": visit.id,
-            "url": visit.url,
+            "url": url_normalized,  # Pass normalized URL
             "link_count": visit.link_count,
             "word_count": visit.word_count,
             "image_count": visit.image_count,
@@ -34,7 +36,7 @@ def create_page_visit(
     db: Session, visit_in: page_metric_schemas.PageMetricCreateDTO
 ) -> page_metric_schemas.PageMetric:
     visit = page_metrics.PageMetric(
-        url=_normalize_url(str(visit_in.url)),
+        url=str(visit_in.url).rstrip('/') or '/',  # Remove trailing slash
         datetime_visited=visit_in.datetime_visited or datetime.now(timezone.utc),
         link_count=visit_in.link_count,
         word_count=visit_in.word_count,
@@ -49,7 +51,7 @@ def create_page_visit(
 def get_visits_for_url(
     db: Session, url: str, limit: int = 50
 ) -> list[page_metric_schemas.PageMetric]:
-    normalized_url = _normalize_url(url)
+    normalized_url = str(url).rstrip('/') or '/'
     stmt = (
         select(page_metrics.PageMetric)
         .where(page_metrics.PageMetric.url == normalized_url)
@@ -63,7 +65,7 @@ def get_visits_for_url(
 def get_latest_metrics_for_url(
     db: Session, url: str
 ) -> page_metric_schemas.PageMetrics | None:
-    normalized_url = _normalize_url(url)
+    normalized_url = str(url).rstrip('/') or '/'
     latest = (
         db.query(
             page_metrics.PageMetric,
