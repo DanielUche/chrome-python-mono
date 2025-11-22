@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiService } from '../services/api'
 import type { PageMetrics, PageMetric } from '../types/metrics'
-import { TIMING } from '../constants'
+import { TIMING, MESSAGE_TYPES } from '../constants'
 
 interface UseMetricsResult {
   metrics: PageMetrics | null
@@ -56,8 +56,24 @@ export function useMetrics(url: string | null): UseMetricsResult {
   useEffect(() => {
     fetchAndUpdateMetrics()
     const interval = setInterval(fetchAndUpdateMetrics, TIMING.METRICS_UI_REFRESH_INTERVAL)
-    return () => clearInterval(interval)
+    
+    // Listen for metrics collection from content script
+    const handleMessage = (message: { type: string }) => {
+      if (message.type === MESSAGE_TYPES.POSTING_END) {
+        // Metrics were just posted, refetch immediately
+        console.log('Metrics posted, refreshing data')
+        fetchAndUpdateMetrics()
+      }
+    }
+    
+    chrome.runtime.onMessage.addListener(handleMessage)
+    
+    return () => {
+      clearInterval(interval)
+      chrome.runtime.onMessage.removeListener(handleMessage)
+    }
   }, [fetchAndUpdateMetrics])
 
   return { metrics, visits, loading, error, noData, refetch: fetchAndUpdateMetrics }
 }
+

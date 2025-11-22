@@ -7,6 +7,7 @@ export type MessageType =
   | 'METRICS_COLLECTED'
   | 'GET_CURRENT_METRICS'
   | 'METRICS_UPDATED'
+  | 'GET_ACTIVE_TAB_URL'
   | 'ERROR'
 
 export interface ExtensionMessage<T = unknown> {

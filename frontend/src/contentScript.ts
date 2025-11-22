@@ -1,28 +1,10 @@
 /**
  * Content script injected into web pages
- * Collects page metrics and sends them to background worker
- * Only sends metrics when the tab is active
+ * Collects page metrics and sends them to background worker for API calls
+ * Only records metrics once when page loads
  */
 
-import { TIMING } from './constants/timing'
-
-let metricsIntervalId: number | null = null
-let isTabActive = false
-
-/**
- * Check if the current tab is active and update flag
- */
-async function updateTabActiveStatus() {
-  try {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-    const activeTabUrl = tabs[0]?.url
-    const currentTabUrl = window.location.href
-    isTabActive = activeTabUrl === currentTabUrl
-  } catch (error) {
-    console.warn('Could not determine tab active status:', error)
-    isTabActive = true // Assume active if we can't check
-  }
-}
+let hasRecordedMetrics = false
 
 /**
  * Collect page metrics from the current page
@@ -41,32 +23,39 @@ function collectPageMetrics() {
 }
 
 /**
- * Stop sending metrics (when extension context is invalidated)
+ * Send metrics to background worker
+ * Background worker will make the actual API call (bypassing CORS)
  */
-function stopMetrics() {
-  if (metricsIntervalId !== null) {
-    clearInterval(metricsIntervalId)
-    metricsIntervalId = null
-    console.log('Stopped metrics collection due to extension invalidation')
+async function sendMetricsViaBackground(metrics: ReturnType<typeof collectPageMetrics>) {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'COLLECT_METRICS',
+      data: {
+        url: metrics.url,
+        link_count: metrics.linkCount,
+        word_count: metrics.wordCount,
+        image_count: metrics.imageCount,
+        datetime_visited: new Date().toISOString(),
+      },
+    })
+
+    if (response?.success) {
+      console.log('Metrics recorded successfully:', response.data)
+      return response.data
+    } else {
+      throw new Error(response?.error || 'Unknown error from background')
+    }
+  } catch (error) {
+    console.error('Failed to send metrics to background:', error)
+    throw error
   }
 }
 
 /**
- * Reinitialize metrics collection
+ * Send metrics to backend once
  */
-function reinitializeMetrics() {
-  stopMetrics()
-  sendMetrics()
-  metricsIntervalId = window.setInterval(sendMetrics, TIMING.METRICS_COLLECTION_INTERVAL)
-  console.log('Reinitialized metrics collection')
-}
-
-/**
- * Send metrics to background worker (only if tab is active)
- */
-function sendMetrics() {
-  // Only send metrics if this tab is active
-  if (!isTabActive) {
+async function recordPageMetrics() {
+  if (hasRecordedMetrics) {
     return
   }
 
@@ -81,94 +70,38 @@ function sendMetrics() {
     // Check if extension context is still valid
     if (!chrome.runtime) {
       console.warn('Extension context invalidated')
-      stopMetrics()
       return
     }
 
-    chrome.runtime.sendMessage(
-      {
-        type: 'COLLECT_METRICS',
-        data: metrics,
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          // Extension context may have been invalidated
-          const errorMsg = chrome.runtime.lastError?.message ?? ''
-          if (errorMsg.includes('invalidated')) {
-            console.warn('Extension context invalidated')
-            stopMetrics()
-          } else {
-            console.error('Error sending metrics:', chrome.runtime.lastError)
-          }
-        } else {
-          console.log('Metrics recorded:', response)
-        }
-      }
-    )
+    // Send metrics to background worker
+    await sendMetricsViaBackground(metrics)
+    hasRecordedMetrics = true
   } catch (error) {
-    console.error('Failed to send metrics:', error)
-    stopMetrics()
+    console.error('Failed to record metrics:', error)
   }
 }
 
-// Listen for extension reload (detect by trying to send a ping)
-function setupExtensionReloadDetection() {
-  setInterval(() => {
-    if (chrome.runtime && metricsIntervalId === null) {
-      // Extension context is back but metrics stopped - reinitialize
-      console.log('Extension context restored, reinitializing metrics')
-      reinitializeMetrics()
-    }
-  }, TIMING.EXTENSION_RELOAD_CHECK_INTERVAL)
-}
-
-// Send metrics when page finishes loading
+// Record metrics when page finishes loading
 async function initializeMetricsCollection() {
-  // Check if tab is active before starting collection
-  await updateTabActiveStatus()
-
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', async () => {
-      await updateTabActiveStatus()
-      console.log('DOMContentLoaded event fired, sending metrics')
-      sendMetrics()
-      // Start periodic collection after initial send
-      metricsIntervalId = window.setInterval(sendMetrics, TIMING.METRICS_COLLECTION_INTERVAL)
+      console.log('DOMContentLoaded event fired')
+      await recordPageMetrics()
     })
   } else {
     // DOM is already loaded (for content scripts injected on already-loaded pages)
-    console.log('DOM already loaded, sending metrics immediately')
-    sendMetrics()
-    // Start periodic collection
-    metricsIntervalId = window.setInterval(sendMetrics, TIMING.METRICS_COLLECTION_INTERVAL)
+    console.log('DOM already loaded, recording metrics')
+    await recordPageMetrics()
   }
 }
 
-// Also wait for page load to get more accurate metrics
+// Also record on page load for more accurate metrics
 window.addEventListener('load', async () => {
-  await updateTabActiveStatus()
   console.log('Page load event fired')
-  // Resend metrics after all resources loaded to get updated counts
-  if (metricsIntervalId !== null) {
-    sendMetrics()
-  }
-})
-
-// Listen for tab visibility changes
-document.addEventListener('visibilitychange', async () => {
-  if (!document.hidden) {
-    // Tab became visible/active
-    await updateTabActiveStatus()
-    if (isTabActive && metricsIntervalId === null) {
-      console.log('Tab became active, reinitializing metrics collection')
-      reinitializeMetrics()
-    }
-  }
+  // Record metrics once page is fully loaded
+  await recordPageMetrics()
 })
 
 initializeMetricsCollection()
-
-// Setup detection for extension reloads
-setupExtensionReloadDetection()
 
 console.log('Content script loaded on:', window.location.href)

@@ -1,10 +1,7 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
-    env_file:
-      - .env
+    env_file: .env
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -19,11 +16,8 @@ services:
 
   backend:
     build: ./backend
-    env_file:
-      - .env
-    command: >
-      sh -c "alembic upgrade head &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    command: bash ./scripts/start.sh
+    env_file: .env
     environment:
       DATABASE_URL: ${DATABASE_URL}
       DEBUG: ${DEBUG:-false}
