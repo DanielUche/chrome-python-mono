@@ -9,6 +9,10 @@ A full-stack application for tracking and analyzing browser history metrics with
 - **Extension:** Chrome Manifest v3
 - **Infrastructure:** Docker + docker-compose
 
+## Overview
+
+![Chrome History Tracker](./sample.png)
+
 ## Prerequisites
 
 - Docker & docker-compose (v2.0+)
