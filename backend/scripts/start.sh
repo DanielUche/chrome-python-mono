@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Change to backend root so Alembic finds alembic.ini
+cd "$(dirname "$0")/.."
+
 echo "🔄 Creating database if it doesn't exist..."
 PGPASSWORD=${POSTGRES_PASSWORD} createdb -h postgres -U ${POSTGRES_USER} ${POSTGRES_DB} 2>/dev/null || true
 

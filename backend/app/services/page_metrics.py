@@ -16,6 +16,7 @@ def _normalize_url(url: str) -> str:
 
 def _format_page_visit(
     visit: page_metrics.PageMetric,
+    tz_offset_hours: float | None = None,
 ) -> page_metric_schemas.PageMetric:
     # Ensure URL is normalized (without trailing slash)
     url_normalized = str(visit.url).rstrip('/') or '/'
@@ -27,7 +28,7 @@ def _format_page_visit(
             "link_count": visit.link_count,
             "word_count": visit.word_count,
             "image_count": visit.image_count,
-            "datetime_visited": format_datetime(visit.datetime_visited),
+            "datetime_visited": format_datetime(visit.datetime_visited, tz_offset_hours),
         }
     )
 
@@ -35,9 +36,22 @@ def _format_page_visit(
 def create_page_visit(
     db: Session, visit_in: page_metric_schemas.PageMetricCreateDTO
 ) -> page_metric_schemas.PageMetric:
+    # Parse the datetime string if provided
+    if visit_in.datetime_visited:
+        if isinstance(visit_in.datetime_visited, str):
+            # Parse ISO format datetime string (replace Z with +00:00 for compatibility)
+            iso_str = visit_in.datetime_visited
+            if iso_str.endswith('Z'):
+                iso_str = iso_str[:-1] + '+00:00'
+            dt_visited = datetime.fromisoformat(iso_str)
+        else:
+            dt_visited = visit_in.datetime_visited
+    else:
+        dt_visited = datetime.now(timezone.utc)
+    
     visit = page_metrics.PageMetric(
         url=str(visit_in.url).rstrip('/') or '/',  # Remove trailing slash
-        datetime_visited=visit_in.datetime_visited or datetime.now(timezone.utc),
+        datetime_visited=dt_visited,
         link_count=visit_in.link_count,
         word_count=visit_in.word_count,
         image_count=visit_in.image_count,
@@ -45,11 +59,11 @@ def create_page_visit(
     db.add(visit)
     db.commit()
     db.refresh(visit)
-    return _format_page_visit(visit)
+    return _format_page_visit(visit, visit_in.timezone_offset)
 
 
 def get_visits_for_url(
-    db: Session, url: str, limit: int = 50
+    db: Session, url: str, limit: int = 50, tz_offset_hours: float | None = None
 ) -> list[page_metric_schemas.PageMetric]:
     normalized_url = str(url).rstrip('/') or '/'
     stmt = (
@@ -59,11 +73,11 @@ def get_visits_for_url(
         .limit(limit)
     )
     visits = db.execute(stmt).scalars().all()
-    return [_format_page_visit(visit) for visit in visits]
+    return [_format_page_visit(visit, tz_offset_hours) for visit in visits]
 
 
 def get_latest_metrics_for_url(
-    db: Session, url: str
+    db: Session, url: str, tz_offset_hours: float | None = None
 ) -> page_metric_schemas.PageMetrics | None:
     normalized_url = str(url).rstrip('/') or '/'
     latest = (
@@ -82,7 +96,7 @@ def get_latest_metrics_for_url(
         return None
 
     visit_obj, visit_count = latest
-    last_visited_str = format_datetime(visit_obj.datetime_visited)
+    last_visited_str = format_datetime(visit_obj.datetime_visited, tz_offset_hours)
 
     return page_metric_schemas.PageMetrics.model_validate(
         {

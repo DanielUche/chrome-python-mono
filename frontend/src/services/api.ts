@@ -1,4 +1,5 @@
 import type { PageMetric, PageMetrics, PageMetricCreateDTO } from '../types/metrics'
+import { getTimezoneOffset } from '../utils/timezone'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -15,7 +16,8 @@ export const apiService = {
    */
   async getMetrics(url: string): Promise<PageMetrics | null> {
     const normalizedUrl = normalizeUrl(url)
-    const response = await fetch(`${API_BASE_URL}/metrics?url=${encodeURIComponent(normalizedUrl)}`)
+    const tzOffset = getTimezoneOffset()
+    const response = await fetch(`${API_BASE_URL}/metrics?url=${encodeURIComponent(normalizedUrl)}&tz_offset=${tzOffset}`)
     if (response.status === 404) {
       return null // No metrics found for this URL
     }
@@ -30,8 +32,9 @@ export const apiService = {
    */
   async getVisits(url: string, limit: number = 50): Promise<PageMetric[]> {
     const normalizedUrl = normalizeUrl(url)
+    const tzOffset = getTimezoneOffset()
     const response = await fetch(
-      `${API_BASE_URL}/visits?url=${encodeURIComponent(normalizedUrl)}&limit=${limit}`
+      `${API_BASE_URL}/visits?url=${encodeURIComponent(normalizedUrl)}&limit=${limit}&tz_offset=${tzOffset}`
     )
     if (response.status === 404) {
       return [] // No visits found for this URL

@@ -29,6 +29,7 @@ export default defineConfig({
         contentScript: path.resolve(__dirname, 'src/contentScript.ts'),
       },
       output: {
+        format: 'es',
         entryFileNames: (chunk) => {
           if (chunk.name === 'background') return 'background.js'
           if (chunk.name === 'contentScript') return 'contentScript.js'

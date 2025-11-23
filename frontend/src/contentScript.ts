@@ -7,6 +7,15 @@
 let hasRecordedMetrics = false
 
 /**
+ * Get the current timezone offset in hours
+ * @returns timezone offset in hours (e.g., 1 for UTC+1, -5 for UTC-5)
+ */
+function getTimezoneOffset(): number {
+  const now = new Date()
+  return -now.getTimezoneOffset() / 60
+}
+
+/**
  * Collect page metrics from the current page
  */
 function collectPageMetrics() {
@@ -28,6 +37,9 @@ function collectPageMetrics() {
  */
 async function sendMetricsViaBackground(metrics: ReturnType<typeof collectPageMetrics>) {
   try {
+    const now = new Date()
+    const tzOffsetHours = getTimezoneOffset()
+    
     const response = await chrome.runtime.sendMessage({
       type: 'COLLECT_METRICS',
       data: {
@@ -35,7 +47,8 @@ async function sendMetricsViaBackground(metrics: ReturnType<typeof collectPageMe
         link_count: metrics.linkCount,
         word_count: metrics.wordCount,
         image_count: metrics.imageCount,
-        datetime_visited: new Date().toISOString(),
+        datetime_visited: now.toISOString(),
+        timezone_offset: tzOffsetHours,
       },
     })
 

@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+import logging
 
 from ..config import get_db
 from ..schemas import page_metric as schemas
-from ..services import page_metric_services
+from ..services import page_metrics as page_metric_services
+
+logger = logging.getLogger(__name__)
 
 db_router = APIRouter(
     prefix="",
@@ -25,9 +28,9 @@ def normalize_url_in_dict(data):
 
 
 @db_router.get("/metrics")
-def get_metrics(url: str, request: Request):
+def get_metrics(request: Request, url: str, tz_offset: float | None = None):
     db: Session = request.state.db
-    metrics = page_metric_services.get_latest_metrics_for_url(db, url=url)
+    metrics = page_metric_services.get_latest_metrics_for_url(db, url=url, tz_offset_hours=tz_offset)
     if metrics is None:
         raise HTTPException(status_code=404, detail="No visits recorded for this URL")
     result = metrics.model_dump()
@@ -36,9 +39,9 @@ def get_metrics(url: str, request: Request):
 
 
 @db_router.get("/visits")
-def list_visits(url: str, limit: int = 50, request: Request = None):
+def list_visits(request: Request, url: str, limit: int = 50, tz_offset: float | None = None):
     db: Session = request.state.db
-    visits = page_metric_services.get_visits_for_url(db, url=url, limit=limit)
+    visits = page_metric_services.get_visits_for_url(db, url=url, limit=limit, tz_offset_hours=tz_offset)
     if not visits:
         raise HTTPException(status_code=404, detail="No visits recorded for this URL")
     results = [v.model_dump() for v in visits]
@@ -47,7 +50,7 @@ def list_visits(url: str, limit: int = 50, request: Request = None):
 
 
 @db_router.post("/visits")
-def create_visit(visit_in: schemas.PageMetricCreateDTO, request: Request):
+def create_visit(request: Request, visit_in: schemas.PageMetricCreateDTO):
     db: Session = request.state.db
     visit = page_metric_services.create_page_visit(db, visit_in)
     result = visit.model_dump()

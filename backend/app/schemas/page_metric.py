@@ -28,6 +28,7 @@ class PageMetricBase(BaseModel):
         return v
 class PageMetricCreateDTO(PageMetricBase):
     datetime_visited: datetime | None = None
+    timezone_offset: float | None = None  # Timezone offset in hours
 
 class PageMetric(PageMetricBase):
     id: int

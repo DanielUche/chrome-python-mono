@@ -1,17 +1,18 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Any
+import os
 
 from app.constants import DATETIME_FORMAT
 
-
-def format_datetime(dt: Any) -> str:
+def format_datetime(dt: Any, tz_offset_hours: float | None = None) -> str:
     if isinstance(dt, datetime):
-        # Convert UTC datetime to local timezone
         if dt.tzinfo is not None:
-            # If datetime has timezone info, convert to local time
-            local_dt = dt.astimezone()
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    
+        if tz_offset_hours is not None:
+            local_dt = dt + timedelta(hours=tz_offset_hours)
         else:
-            # If naive datetime, assume it's already local
-            local_dt = dt
+            local_dt = dt.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
+        
         return local_dt.strftime(DATETIME_FORMAT)
     return str(dt)

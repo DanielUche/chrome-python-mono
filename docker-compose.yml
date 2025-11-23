@@ -17,9 +17,8 @@ services:
   backend:
     build: ./backend
     command: bash ./scripts/start.sh
-    env_file: .env
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/chrome_history
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
