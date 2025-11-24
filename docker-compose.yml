@@ -3,8 +3,8 @@ services:
     image: postgres:15
     env_file: .env
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-chrome_history}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -18,7 +18,7 @@ services:
     build: ./backend
     command: bash ./scripts/start.sh
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/chrome_history
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/chrome_history
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:

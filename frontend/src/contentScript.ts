@@ -1,10 +1,10 @@
 /**
  * Content script injected into web pages
  * Collects page metrics and sends them to background worker for API calls
- * Only records metrics once when page loads
+ * Records metrics on initial load and on SPA navigation
  */
 
-let hasRecordedMetrics = false
+let lastRecordedUrl = ''
 
 /**
  * Get the current timezone offset in hours
@@ -65,10 +65,13 @@ async function sendMetricsViaBackground(metrics: ReturnType<typeof collectPageMe
 }
 
 /**
- * Send metrics to backend once
+ * Send metrics to backend once per URL
  */
 async function recordPageMetrics() {
-  if (hasRecordedMetrics) {
+  const currentUrl = window.location.href
+
+  // Skip if already recorded this URL
+  if (lastRecordedUrl === currentUrl) {
     return
   }
 
@@ -88,7 +91,7 @@ async function recordPageMetrics() {
 
     // Send metrics to background worker
     await sendMetricsViaBackground(metrics)
-    hasRecordedMetrics = true
+    lastRecordedUrl = currentUrl
   } catch (error) {
     console.error('Failed to record metrics:', error)
   }
@@ -114,6 +117,54 @@ window.addEventListener('load', async () => {
   // Record metrics once page is fully loaded
   await recordPageMetrics()
 })
+
+// Listen for SPA navigation (History API)
+let previousUrl = window.location.href
+const urlObserver = new MutationObserver(async () => {
+  const currentUrl = window.location.href
+  if (currentUrl !== previousUrl) {
+    console.log('URL changed from', previousUrl, 'to', currentUrl)
+    previousUrl = currentUrl
+    // Wait a bit for the SPA to render new content
+    setTimeout(async () => {
+      await recordPageMetrics()
+    }, 500)
+  }
+})
+
+// Start observing DOM changes to detect SPA navigation
+urlObserver.observe(document.body, {
+  childList: true,
+  subtree: true,
+})
+
+// Also listen to popstate and pushState events
+window.addEventListener('popstate', async () => {
+  console.log('Popstate event fired')
+  setTimeout(async () => {
+    await recordPageMetrics()
+  }, 500)
+})
+
+// Intercept pushState and replaceState
+const originalPushState = history.pushState
+const originalReplaceState = history.replaceState
+
+history.pushState = function (...args) {
+  originalPushState.apply(this, args)
+  console.log('pushState detected')
+  setTimeout(async () => {
+    await recordPageMetrics()
+  }, 500)
+}
+
+history.replaceState = function (...args) {
+  originalReplaceState.apply(this, args)
+  console.log('replaceState detected')
+  setTimeout(async () => {
+    await recordPageMetrics()
+  }, 500)
+}
 
 initializeMetricsCollection()
 
