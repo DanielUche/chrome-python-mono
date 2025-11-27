@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone, timedelta
-from typing import Any
+from typing import Any, Optional
 import os
 
 from app.constants import DATETIME_FORMAT
 
-def format_datetime(dt: Any, tz_offset_hours: float | None = None) -> str:
+def format_datetime(dt: Any, tz_offset_hours: Optional[float] = None) -> str:
     if isinstance(dt, datetime):
         if dt.tzinfo is not None:
             dt = dt.astimezone(timezone.utc).replace(tzinfo=None)

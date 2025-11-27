@@ -30,8 +30,7 @@
       "js": [
         "contentScript.js"
       ],
-      "run_at": "document_end",
-      "type": "module"
+      "run_at": "document_end"
     }
   ],
   "side_panel": {

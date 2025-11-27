@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, HttpUrl, field_validator
 
 
@@ -27,8 +30,8 @@ class PageMetricBase(BaseModel):
             return normalized
         return v
 class PageMetricCreateDTO(PageMetricBase):
-    datetime_visited: datetime | None = None
-    timezone_offset: float | None = None  # Timezone offset in hours
+    datetime_visited: Optional[datetime] = None
+    timezone_offset: Optional[float] = None  # Timezone offset in hours
 
 class PageMetric(PageMetricBase):
     id: int
@@ -41,5 +44,5 @@ class PageMetrics(BaseModel):
     link_count: int
     word_count: int
     image_count: int
-    last_visited: str | None
+    last_visited: Optional[str]
     visit_count: int

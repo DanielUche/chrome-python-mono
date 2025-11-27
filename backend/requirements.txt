@@ -7,4 +7,6 @@ python-dotenv
 alembic
 pytest
 pytest-cov
+loguru
+slowapi
 

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -28,7 +31,7 @@ def normalize_url_in_dict(data):
 
 
 @db_router.get("/metrics")
-def get_metrics(request: Request, url: str, tz_offset: float | None = None):
+def get_metrics(request: Request, url: str, tz_offset: Optional[float] = None):
     db: Session = request.state.db
     metrics = page_metric_services.get_latest_metrics_for_url(db, url=url, tz_offset_hours=tz_offset)
     if metrics is None:
@@ -39,7 +42,7 @@ def get_metrics(request: Request, url: str, tz_offset: float | None = None):
 
 
 @db_router.get("/visits")
-def list_visits(request: Request, url: str, limit: int = 50, tz_offset: float | None = None):
+def list_visits(request: Request, url: str, limit: int = 50, tz_offset: Optional[float] = None):
     db: Session = request.state.db
     visits = page_metric_services.get_visits_for_url(db, url=url, limit=limit, tz_offset_hours=tz_offset)
     if not visits:

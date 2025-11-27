@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from typing import Optional, List
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
@@ -14,28 +17,44 @@ db_router = APIRouter(
     dependencies=[Depends(get_db)],
 )
 
-@db_router.get("/metrics", response_model=schemas.PageMetrics)
+@db_router.get("/metrics", response_model=schemas.PageMetrics | None)
 def get_metrics(
     request: Request,
     url: str,
-    tz_offset: float | None = None,
-) -> schemas.PageMetrics:
+    tz_offset: Optional[float] = None,
+) -> schemas.PageMetrics | None:
     db: Session = request.state.db
     metrics = page_metrics.get_latest_metrics_for_url(db, url=url, tz_offset_hours=tz_offset)
-    if metrics is None:
-        raise URLNotVisitedException(url)
     return metrics
 
 
-@db_router.get("/visits", response_model=list[schemas.PageMetric])
+@db_router.get("/visits", response_model=List[schemas.PageMetric])
 def list_visits(
     request: Request,
     url: str,
     limit: int = 50,
-    tz_offset: float | None = None,
-) -> list[schemas.PageMetric]:
+    offset: int = 0,
+    tz_offset: Optional[float] = None,
+) -> List[schemas.PageMetric]:
+    """
+    Get paginated list of visits for a URL.
+    
+    Args:
+        url: The URL to get visits for
+        limit: Maximum number of results to return (default: 50, max: 100)
+        offset: Number of results to skip for pagination (default: 0)
+        tz_offset: Timezone offset in hours for datetime formatting
+    """
+    # Validate pagination parameters
+    if limit < 1 or limit > 100:
+        raise ValueError("Limit must be between 1 and 100")
+    if offset < 0:
+        raise ValueError("Offset must be non-negative")
+    
     db: Session = request.state.db
-    visits = page_metrics.get_visits_for_url(db, url=url, limit=limit, tz_offset_hours=tz_offset)
+    visits = page_metrics.get_visits_for_url(
+        db, url=url, limit=limit, offset=offset, tz_offset_hours=tz_offset
+    )
     return visits
 
 

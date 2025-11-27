@@ -1,7 +1,8 @@
 import type { PageMetric, PageMetrics, PageMetricCreateDTO } from '../types/metrics'
 import { getTimezoneOffset } from '../utils/timezone'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const { VITE_API_URL } = import.meta.env
+const API_BASE_URL = VITE_API_URL || 'http://localhost:8000'
 
 /**
  * Normalize URL by removing trailing slash (must match backend normalization)
@@ -17,14 +18,22 @@ export const apiService = {
   async getMetrics(url: string): Promise<PageMetrics | null> {
     const normalizedUrl = normalizeUrl(url)
     const tzOffset = getTimezoneOffset()
-    const response = await fetch(`${API_BASE_URL}/metrics?url=${encodeURIComponent(normalizedUrl)}&tz_offset=${tzOffset}`)
-    if (response.status === 404) {
-      return null // No metrics found for this URL
+    try {
+      const response = await fetch(`${API_BASE_URL}/metrics?url=${encodeURIComponent(normalizedUrl)}&tz_offset=${tzOffset}`)
+      if (response.status === 404) {
+        return null // No metrics found for this URL
+      }
+      if (!response.ok) {
+        throw new Error(`Unable to load metrics. Please try again later.`)
+      }
+      return response.json()
+    } catch (error) {
+      // Network error or backend is down
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to the server. Please check your internet connection or try again later.')
+      }
+      throw error
     }
-    if (!response.ok) {
-      throw new Error(`Failed to fetch metrics: ${response.statusText}`)
-    }
-    return response.json()
   },
 
   /**
@@ -33,35 +42,51 @@ export const apiService = {
   async getVisits(url: string, limit: number = 50): Promise<PageMetric[]> {
     const normalizedUrl = normalizeUrl(url)
     const tzOffset = getTimezoneOffset()
-    const response = await fetch(
-      `${API_BASE_URL}/visits?url=${encodeURIComponent(normalizedUrl)}&limit=${limit}&tz_offset=${tzOffset}`
-    )
-    if (response.status === 404) {
-      return [] // No visits found for this URL
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/visits?url=${encodeURIComponent(normalizedUrl)}&limit=${limit}&tz_offset=${tzOffset}`
+      )
+      if (response.status === 404) {
+        return [] // No visits found for this URL
+      }
+      if (!response.ok) {
+        throw new Error(`Unable to load visit history. Please try again later.`)
+      }
+      return response.json()
+    } catch (error) {
+      // Network error or backend is down
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to the server. Please check your internet connection or try again later.')
+      }
+      throw error
     }
-    if (!response.ok) {
-      throw new Error(`Failed to fetch visits: ${response.statusText}`)
-    }
-    return response.json()
   },
 
   /**
    * Record a new page visit with metrics
    */
   async recordVisit(visit: PageMetricCreateDTO): Promise<PageMetric> {
-    const response = await fetch(`${API_BASE_URL}/visits`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...visit,
-        url: normalizeUrl(visit.url),
-      }),
-    })
-    if (!response.ok) {
-      throw new Error(`Failed to record visit: ${response.statusText}`)
+    try {
+      const response = await fetch(`${API_BASE_URL}/visits`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...visit,
+          url: normalizeUrl(visit.url),
+        }),
+      })
+      if (!response.ok) {
+        throw new Error(`Unable to save metrics. Please try again later.`)
+      }
+      return response.json()
+    } catch (error) {
+      // Network error or backend is down
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to the server. Metrics will be saved when connection is restored.')
+      }
+      throw error
     }
-    return response.json()
   },
 }

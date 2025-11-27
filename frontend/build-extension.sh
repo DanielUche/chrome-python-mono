@@ -1,8 +1,14 @@
 #!/bin/bash
 # Build script that copies manifest.json to dist
 
+echo "Cleaning previous build..."
+rm -rf dist node_modules/.vite
+
 echo "Building extension..."
 npm run build
+
+echo "Building content script as IIFE..."
+npx vite build --config vite.content.config.ts
 
 echo "Copying manifest.json to dist..."
 cp src/manifest.json dist/manifest.json

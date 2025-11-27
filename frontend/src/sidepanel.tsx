@@ -6,13 +6,36 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useEffect, useState, useCallback } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useMetrics } from './hooks/useMetrics'
 import { MetricsDisplay } from './components/MetricsDisplay'
 import { VisitHistory } from './components/VisitHistory'
-import { LoadingSpinner } from './components/LoadingSpinner'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { ToastContainer } from './components/Toast'
+import { showToast } from './utils/toast'
+import { MetricsDisplaySkeleton, VisitHistorySkeleton } from './components/SkeletonLoaders'
 import { chromeService } from './services/chrome'
 import { MESSAGE_TYPES } from './constants'
 import './styles/globals.css'
+
+// Create a React Query client with offline support
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false,
+      networkMode: 'offlineFirst', // Continue using cached data when offline
+    },
+    mutations: {
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      networkMode: 'offlineFirst', // Queue mutations when offline
+    },
+  },
+})
 
 function SidePanelComponent() {
   const [url, setUrl] = useState<string | null>(null)
@@ -25,11 +48,15 @@ function SidePanelComponent() {
   }, [])
 
   // Handle extension messages
-  const handleMessage = useCallback((message: { type: string }) => {
+  const handleMessage = useCallback((message: { type: string; success?: boolean; error?: string }) => {
     if (message.type === MESSAGE_TYPES.POSTING_START) {
       setIsPosting(true)
     } else if (message.type === MESSAGE_TYPES.POSTING_END) {
       setIsPosting(false)
+      // Show only error toast (success is implicit when data refreshes)
+      if (message.error) {
+        showToast(`Failed to record metrics: ${message.error}`, 'error')
+      }
     }
   }, [])
 
@@ -41,14 +68,17 @@ function SidePanelComponent() {
       }
     })
 
-    // Setup tab listeners
-    const handleTabUpdate = (_tabId: number, _changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
-      if (tab.url) {
+    // Setup tab listeners - only process events for active tabs
+    const handleTabUpdate = async (tabId: number, _changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
+      // Only process if this is the active tab
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      if (activeTab && tabId === activeTab.id && tab.url) {
         handleTabUrlChange(tab.url)
       }
     }
 
     const handleTabActivated = async (activeInfo: { tabId: number }) => {
+      // Tab was activated, update URL immediately
       const tab = await chrome.tabs.get(activeInfo.tabId)
       if (tab.url) {
         handleTabUrlChange(tab.url)
@@ -78,7 +108,12 @@ function SidePanelComponent() {
       </header>
 
       <main className="sidepanel-content">
-        {loading && <LoadingSpinner />}
+        {loading && (
+          <>
+            <MetricsDisplaySkeleton />
+            <VisitHistorySkeleton />
+          </>
+        )}
 
         {error && (
           <div className="error-message">
@@ -112,6 +147,9 @@ function SidePanelComponent() {
       <footer className="sidepanel-footer">
         <p>Current URL: <code>{url}</code></p>
       </footer>
+
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   )
 }
@@ -131,7 +169,11 @@ function initializeApp() {
   try {
     createRoot(rootElement).render(
       <StrictMode>
-        <SidePanelComponent />
+        <QueryClientProvider client={queryClient}>
+          <ErrorBoundary>
+            <SidePanelComponent />
+          </ErrorBoundary>
+        </QueryClientProvider>
       </StrictMode>,
     )
     console.log('React app mounted successfully')

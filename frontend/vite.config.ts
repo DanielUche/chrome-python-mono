@@ -26,27 +26,20 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         background: path.resolve(__dirname, 'src/background.ts'),
-        contentScript: path.resolve(__dirname, 'src/contentScript.ts'),
       },
       output: {
-        format: 'es',
         entryFileNames: (chunk) => {
           if (chunk.name === 'background') return 'background.js'
-          if (chunk.name === 'contentScript') return 'contentScript.js'
           return '[name].[hash].js'
         },
-        chunkFileNames: (chunk) => {
-          // Keep chunks in root for content script
-          if (chunk.name?.startsWith('timing') || chunk.name?.startsWith('messages')) {
-            return '[name].[hash].js'
-          }
-          return 'chunks/[name].[hash].js'
-        },
+        chunkFileNames: 'chunks/[name].[hash].js',
         assetFileNames: 'assets/[name].[hash][extname]',
+        format: 'es',
       },
     },
     outDir: 'dist',
     emptyOutDir: true,
+    sourcemap: false,
   },
   resolve: {
     alias: {

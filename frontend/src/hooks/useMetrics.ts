@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiService } from '../services/api'
 import type { PageMetrics, PageMetric } from '../types/metrics'
-import { TIMING, MESSAGE_TYPES } from '../constants'
+import { MESSAGE_TYPES, NAVIGATION, TIMING } from '../constants'
+import { showToast } from '../utils/toast'
 
 interface UseMetricsResult {
   metrics: PageMetrics | null
@@ -29,6 +30,14 @@ function hasNoData(metricsData: PageMetrics | null, visitsData: PageMetric[]): b
   return !metricsData && visitsData.length === 0
 }
 
+/**
+ * Check if a URL is restricted and should not be tracked
+ */
+function isRestrictedUrl(url: string | null): boolean {
+  if (!url) return true
+  return NAVIGATION.RESTRICTED_PREFIXES.some(prefix => url.startsWith(prefix))
+}
+
 export function useMetrics(url: string | null): UseMetricsResult {
   const [metrics, setMetrics] = useState<PageMetrics | null>(null)
   const [visits, setVisits] = useState<PageMetric[]>([])
@@ -39,6 +48,16 @@ export function useMetrics(url: string | null): UseMetricsResult {
   const fetchAndUpdateMetrics = useCallback(async () => {
     if (!url) return
 
+    // Skip fetching for restricted URLs
+    if (isRestrictedUrl(url)) {
+      setMetrics(null)
+      setVisits([])
+      setNoData(true)
+      setError(null)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
@@ -47,7 +66,9 @@ export function useMetrics(url: string | null): UseMetricsResult {
       setMetrics(metricsData)
       setVisits(visitsData)
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch metrics'))
+      const errorMessage = err instanceof Error ? err.message : 'Unable to load data. Please try again later.'
+      setError(err instanceof Error ? err : new Error(errorMessage))
+      showToast(errorMessage, 'error')
     } finally {
       setLoading(false)
     }

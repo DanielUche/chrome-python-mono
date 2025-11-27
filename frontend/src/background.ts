@@ -7,6 +7,7 @@ import type { ExtensionMessage } from "./types/messages";
 import { apiService } from "./services/api";
 import type { PageMetricCreateDTO } from "./types/metrics";
 import { MESSAGE_TYPES } from "./constants";
+import { logger } from "./utils/logger";
 
 // Listen for extension icon clicks to open side panel
 chrome.action.onClicked.addListener(async (tab) => {
@@ -15,7 +16,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       await chrome.sidePanel.open({ tabId: tab.id });
     }
   } catch (error) {
-    console.error('Error opening side panel:', error);
+    logger.error('Error opening side panel', error, { tabId: tab.id });
   }
 });
 
@@ -25,34 +26,53 @@ chrome.runtime.onMessage.addListener(
     // Handle messages asynchronously
     (async () => {
       try {
-        console.log('Background: Received message:', message.type);
+        logger.debug('Received message', { type: message.type });
         
         if (message.type === 'COLLECT_METRICS') {
           const payload = message.data as PageMetricCreateDTO;
-          const result = await apiService.recordVisit({
-            url: payload.url,
-            link_count: payload.link_count,
-            word_count: payload.word_count,
-            image_count: payload.image_count,
-            datetime_visited: payload.datetime_visited,
-          });
           
-          // Notify sidepanel that metrics were posted
           try {
-            await chrome.runtime.sendMessage({
-              type: MESSAGE_TYPES.POSTING_END,
+            const result = await apiService.recordVisit({
+              url: payload.url,
+              link_count: payload.link_count,
+              word_count: payload.word_count,
+              image_count: payload.image_count,
+              datetime_visited: payload.datetime_visited,
             });
-          } catch {
-            // Sidepanel might not be open, that's ok
+            
+            // Notify sidepanel that metrics were posted successfully
+            try {
+              await chrome.runtime.sendMessage({
+                type: MESSAGE_TYPES.POSTING_END,
+                success: true,
+              });
+            } catch {
+              // Sidepanel might not be open, that's ok
+            }
+            
+            sendResponse({ success: true, data: result });
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            
+            // Notify sidepanel of error
+            try {
+              await chrome.runtime.sendMessage({
+                type: MESSAGE_TYPES.POSTING_END,
+                success: false,
+                error: errorMsg,
+              });
+            } catch {
+              // Sidepanel might not be open, that's ok
+            }
+            
+            throw error; // Re-throw to be caught by outer catch
           }
-          
-          sendResponse({ success: true, data: result });
         } else {
           sendResponse({ success: true });
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error('Background: Error handling message:', errorMsg);
+        logger.error('Error handling message', error, { messageType: message.type });
         sendResponse({ success: false, error: errorMsg });
       }
     })();
@@ -61,7 +81,7 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
-console.log("Background service worker loaded");
+logger.info('Background service worker initialized');
 
 
 

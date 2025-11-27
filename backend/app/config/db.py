@@ -8,11 +8,15 @@ from .settings import Settings
 # Initialize settings
 settings = Settings()
 
-# Create database engine
+# Create database engine with connection pooling configuration
 engine: Engine = create_engine(
     settings.DATABASE_URL,
     future=True,
     pool_pre_ping=True,  # Verify connections before using them
+    pool_size=10,  # Maximum number of connections to keep in pool
+    max_overflow=20,  # Maximum number of connections that can be created beyond pool_size
+    pool_timeout=30,  # Seconds to wait before giving up on getting a connection
+    pool_recycle=3600,  # Recycle connections after 1 hour to avoid stale connections
 )
 
 # Create session factory
