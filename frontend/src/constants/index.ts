@@ -1,6 +1,3 @@
-/**
- * Application constants
- */
 
 export * from './dateFormats'
 export * from './messages'

@@ -1,7 +1,3 @@
-/**
- * Date formatting constants
- */
-
 export const DATE_FORMATS = [
   'MMMM DD, YYYY [at] hh:mm A',  // November 22, 2025 at 12:59 PM
   'MMMM D, YYYY [at] hh:mm A',   // November 22, 2025 at 12:59 PM (without zero-padding)

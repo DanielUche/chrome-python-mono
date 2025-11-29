@@ -1,6 +1,4 @@
-/**
- * Navigation and SPA detection constants
- */
+
 
 export const NAVIGATION = {
   /** Delay for SPA navigation detection (ms) */

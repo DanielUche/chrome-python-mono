@@ -1,7 +1,3 @@
-/**
- * Skeleton loader components for better loading UX
- */
-
 export function MetricsDisplaySkeleton() {
   return (
     <div className="metrics-skeleton">

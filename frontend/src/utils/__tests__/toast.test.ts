@@ -9,6 +9,7 @@ vi.mock('react-toastify', () => ({
     error: vi.fn(),
     info: vi.fn(),
     warning: vi.fn(),
+    dismiss: vi.fn(),
   },
 }))
 
@@ -21,7 +22,7 @@ describe('showToast utility', () => {
     showToast('Success message', 'success')
     
     expect(toast.success).toHaveBeenCalledWith('Success message', {
-      position: 'bottom-right',
+      position: 'top-right',
       autoClose: 3000,
       hideProgressBar: false,
       closeOnClick: true,
@@ -34,7 +35,7 @@ describe('showToast utility', () => {
     showToast('Error message', 'error')
     
     expect(toast.error).toHaveBeenCalledWith('Error message', {
-      position: 'bottom-right',
+      position: 'top-right',
       autoClose: 3000,
       hideProgressBar: false,
       closeOnClick: true,
@@ -47,7 +48,7 @@ describe('showToast utility', () => {
     showToast('Info message')
     
     expect(toast.info).toHaveBeenCalledWith('Info message', {
-      position: 'bottom-right',
+      position: 'top-right',
       autoClose: 3000,
       hideProgressBar: false,
       closeOnClick: true,
@@ -60,7 +61,7 @@ describe('showToast utility', () => {
     showToast('Warning message', 'warning')
     
     expect(toast.warning).toHaveBeenCalledWith('Warning message', {
-      position: 'bottom-right',
+      position: 'top-right',
       autoClose: 3000,
       hideProgressBar: false,
       closeOnClick: true,

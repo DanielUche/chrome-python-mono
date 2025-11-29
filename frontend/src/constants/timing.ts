@@ -1,6 +1,3 @@
-/**
- * Timing and interval constants
- */
 
 export const TIMING = {
   METRICS_COLLECTION_INTERVAL: 300000,    // 5 minutes

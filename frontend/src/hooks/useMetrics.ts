@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { apiService } from '../services/api'
 import type { PageMetrics, PageMetric } from '../types/metrics'
 import { MESSAGE_TYPES, NAVIGATION, TIMING } from '../constants'
-import { showToast } from '../utils/toast'
+import { showToast } from '../utils/toast';
 
 interface UseMetricsResult {
   metrics: PageMetrics | null
@@ -42,7 +42,6 @@ export function useMetrics(url: string | null): UseMetricsResult {
   const [metrics, setMetrics] = useState<PageMetrics | null>(null)
   const [visits, setVisits] = useState<PageMetric[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
   const [noData, setNoData] = useState(false)
 
   const fetchAndUpdateMetrics = useCallback(async () => {
@@ -53,13 +52,11 @@ export function useMetrics(url: string | null): UseMetricsResult {
       setMetrics(null)
       setVisits([])
       setNoData(true)
-      setError(null)
       setLoading(false)
       return
     }
 
     setLoading(true)
-    setError(null)
     try {
       const [metricsData, visitsData] = await fetchMetricsData(url)
       setNoData(hasNoData(metricsData, visitsData))
@@ -67,7 +64,6 @@ export function useMetrics(url: string | null): UseMetricsResult {
       setVisits(visitsData)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unable to load data. Please try again later.'
-      setError(err instanceof Error ? err : new Error(errorMessage))
       showToast(errorMessage, 'error')
     } finally {
       setLoading(false)
@@ -82,7 +78,6 @@ export function useMetrics(url: string | null): UseMetricsResult {
     const handleMessage = (message: { type: string }) => {
       if (message.type === MESSAGE_TYPES.POSTING_END) {
         // Metrics were just posted, refetch immediately
-        console.log('Metrics posted, refreshing data')
         fetchAndUpdateMetrics()
       }
     }
@@ -95,6 +90,6 @@ export function useMetrics(url: string | null): UseMetricsResult {
     }
   }, [fetchAndUpdateMetrics])
 
-  return { metrics, visits, loading, error, noData, refetch: fetchAndUpdateMetrics }
+  return { metrics, visits, loading, error: null, noData, refetch: fetchAndUpdateMetrics }
 }
 

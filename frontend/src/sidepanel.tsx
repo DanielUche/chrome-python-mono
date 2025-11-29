@@ -1,8 +1,3 @@
-/**
- * Main side panel React component
- * Serves as both the entry point and UI component for the Chrome extension sidepanel
- */
-
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useEffect, useState, useCallback } from 'react'
@@ -11,8 +6,8 @@ import { useMetrics } from './hooks/useMetrics'
 import { MetricsDisplay } from './components/MetricsDisplay'
 import { VisitHistory } from './components/VisitHistory'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { ToastContainer } from './components/Toast'
-import { showToast } from './utils/toast'
+import { ToastContainer } from './components/ToastContainer';
+import { showToast } from './utils/toast';
 import { MetricsDisplaySkeleton, VisitHistorySkeleton } from './components/SkeletonLoaders'
 import { chromeService } from './services/chrome'
 import { MESSAGE_TYPES } from './constants'
@@ -115,13 +110,7 @@ function SidePanelComponent() {
           </>
         )}
 
-        {error && (
-          <div className="error-message">
-            <p>Error: {error.message}</p>
-            <p className="error-hint">Make sure the backend API is running on http://localhost:8000</p>
-          </div>
-        )}
-
+       
         {metrics && !loading && (
           <>
             <MetricsDisplay metrics={metrics} />
@@ -156,31 +145,20 @@ function SidePanelComponent() {
 
 // Mount React app
 function initializeApp() {
-  console.log('Sidepanel app initializing')
-
   const rootElement = document.getElementById('root')
   if (!rootElement) {
-    console.error('Root element not found in sidepanel.html')
-    throw new Error('Root element not found')
+    throw new Error('Root element not found in sidepanel.html')
   }
 
-  console.log('Root element found, mounting React app')
-
-  try {
-    createRoot(rootElement).render(
-      <StrictMode>
-        <QueryClientProvider client={queryClient}>
-          <ErrorBoundary>
-            <SidePanelComponent />
-          </ErrorBoundary>
-        </QueryClientProvider>
-      </StrictMode>,
-    )
-    console.log('React app mounted successfully')
-  } catch (error) {
-    console.error('Error mounting React app:', error)
-    document.body.innerHTML = `<div style="color: red; padding: 20px;">Error loading extension: ${error instanceof Error ? error.message : 'Unknown error'}</div>`
-  }
+  createRoot(rootElement).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <SidePanelComponent />
+        </ErrorBoundary>
+      </QueryClientProvider>
+    </StrictMode>,
+  )
 }
 
 // Initialize app when DOM is ready

@@ -1,8 +1,4 @@
 /**
- * Timezone utilities
- */
-
-/**
  * Get the current timezone offset in hours
  * @returns timezone offset in hours (e.g., 1 for UTC+1, -5 for UTC-5)
  */
