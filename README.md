@@ -7,7 +7,7 @@ A full-stack application for tracking and analyzing browser history metrics with
 - **Backend:** FastAPI + PostgreSQL (Python 3.12)
 - **Frontend:** React 19 + TypeScript + Vite
 - **Extension:** Chrome Manifest v3
-- **Infrastructure:** Docker + docker-compose
+- **Infrastructure:** Docker + docker compose
 
 ## Overview
 
@@ -15,7 +15,7 @@ A full-stack application for tracking and analyzing browser history metrics with
 
 ## Prerequisites
 
-- Docker & docker-compose (v2.0+)
+- Docker & docker compose (v2.0+)
 - Node.js (v18+)
 - Python 3.10+ (for local development)
 
@@ -45,10 +45,11 @@ LOG_LEVEL=INFO
 The backend startup script automatically runs database migrations before starting the application.
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This will:
+
 - Start PostgreSQL database on port `5432`
 - Start FastAPI backend on port `8000`
 - Run Alembic migrations (`alembic upgrade head`)
@@ -57,20 +58,20 @@ This will:
 **Check containers are running:**
 
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 **View logs:**
 
 ```bash
-docker-compose logs -f backend
-docker-compose logs -f postgres
+docker compose logs -f backend
+docker compose logs -f postgres
 ```
 
 **Stop containers:**
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ## Install Frontend Dependencies
@@ -84,7 +85,7 @@ npm install
 
 ```bash
 cd frontend
-npm run build
+./build-extention.sh
 ```
 
 The extension will be built to `frontend/dist/`.
@@ -109,6 +110,7 @@ cd backend
 ```
 
 This runs all backend tests including:
+
 - Service layer tests
 - Schema validation tests
 - API endpoint tests
@@ -182,6 +184,7 @@ npm run lint
 ### Database Connection Issues
 
 If you see "could not translate host name 'postgres'":
+
 - Make sure you're using `postgres` (not `localhost`) in DATABASE_URL when running in Docker
 - For local development, use `localhost` instead
 
@@ -197,11 +200,11 @@ If ports 8000 or 5432 are already in use:
 
 ```bash
 # Stop containers
-docker-compose down
+docker compose down
 
-# Update docker-compose.yml to use different ports
+# Update docker compose.yml to use different ports
 # Then restart
-docker-compose up -d
+docker compose up -d
 ```
 
 ## License
